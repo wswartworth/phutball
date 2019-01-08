@@ -1,4 +1,5 @@
 import tkinter as tk
+import gamestate
 
 class Board(tk.Frame):
 
@@ -15,39 +16,32 @@ class Board(tk.Frame):
 
     #use the game state to update the baord GUI
     def updateStones(self):
-        for point in self.gamestate.stones:
+        for point in self.gamestate.boardState:
             
             r,c = point[0],point[1]
 
-            last = (point == self.last)
+            #last = (point == self.last)
             
             if((r,c) in self.stoneIDs):
                 self.board.delete(self.stoneIDs[(r,c)])
-            if (self.gamestate.stones[point] == 1):
-                self.stoneIDs[(r,c)] = self.drawStone(r,c,"red",last)
-            elif (self.gamestate.stones[point] == -1):
-                self.stoneIDs[(r,c)] = self.drawStone(r,c,"blue", last)
 
-        
+            if (self.gamestate.boardState[point] == gamestate.STONE):
+                self.stoneIDs[(r,c)] = self.drawStone( (r,c) , False)
+            elif (self.gamestate.boardState[point] == gamestate.BALL):
+                self.stoneIDs[(r,c)] = self.drawStone( (r,c), True)
+
+
 
     #called on a click
     def onClick(self,event):
 
-        if not self.clickable: return
+       # if not self.clickable: return
         
         r,c = self.row_col(event.x,event.y)
         success = self.tryPlace(r,c)
         if(success):
-            #if self.gamestate.p1Turn:
-            #    self.player1.makeMove((r,c))
-            #else:
-            #    self.player2.makeMove((r,c))
-
-            #########
-            #print(self.gamestate.findForced())
-            ##########
-            
-            self.nextTurn()
+            #self.nextTurn()
+            pass
 
 
 
@@ -56,92 +50,58 @@ class Board(tk.Frame):
     def tryPlace(self,r,c):
         if r<0 or r>self.rows-1 or c<0 or c>self.cols-1:
             return False
-        if self.gamestate.stones[(r,c)] != 0:
+        if self.gamestate.boardState[(r,c)] != gamestate.EMPTY:
             return False
-        self.gamestate.setStone(r,c)
+        self.gamestate.setStone((r,c))
 
-        self.last = (r,c) #new
+        #self.last = (r,c) #new
                    
         self.updateStones()
         return True
         
     #called when the cursor moves
-    def onMove(self,event):
+    # def onMove(self,event):
 
-        if not self.clickable: return
+    #     if not self.clickable: return
         
-        r,c = self.row_col(event.x,event.y)
-        if r<0 or r>self.rows-1 or c<0 or c>self.cols-1:
-            if(self.cursorStoneId != -1): #copy pasta
-                self.board.delete(self.cursorStoneId)
-                self.cursorStoneId = -1
-            return
-        if(r != self.cursorRow or c != self.cursorCol):
-            if(self.cursorStoneId != -1):
-                self.board.delete(self.cursorStoneId)
-            if(self.gamestate.stones[(r,c)] == 0): #empty square
-                if(self.gamestate.p1Turn):
-                    color = "#FFCCCC"
-                else:
-                    color = "#CCFFFF"
-                self.cursorStoneId = self.drawStone(r,c,color,False)
-                self.cursorRow, self.cursorCol = r,c
-            else:
-                self.cursorRow, self.cursorCol = -1,-1
+    #     r,c = self.row_col(event.x,event.y)
+    #     if r<0 or r>self.rows-1 or c<0 or c>self.cols-1:
+    #         if(self.cursorStoneId != -1): #copy pasta
+    #             self.board.delete(self.cursorStoneId)
+    #             self.cursorStoneId = -1
+    #         return
+    #     if(r != self.cursorRow or c != self.cursorCol):
+    #         if(self.cursorStoneId != -1):
+    #             self.board.delete(self.cursorStoneId)
+    #         if(self.gamestate.stones[(r,c)] == 0): #empty square
+    #             if(self.gamestate.p1Turn):
+    #                 color = "#FFCCCC"
+    #             else:
+    #                 color = "#CCFFFF"
+    #             self.cursorStoneId = self.drawStone(r,c,color,False)
+    #             self.cursorRow, self.cursorCol = r,c
+    #         else:
+    #             self.cursorRow, self.cursorCol = -1,-1
         
     #create stone, return ID
-    def drawStone(self,r,c,color,last):
+    def drawStone(self, coords, football=False):
+        r,c = coords
         center = (self.hborder + c*self.squaresize, self.vborder + r*self.squaresize)
+        color = "black" if football else "white"
         rad = self.stonerad
+        return self.board.create_oval(center[0]-rad, center[1]-rad,center[0]+rad,center[1]+rad, fill=color, width = 1, outline = "black")
 
-        if last:
-            w = 2
-            out = "black"
-        else:
-            w = 1
-            out = "black"
-        
-        return self.board.create_oval(center[0]-rad, center[1]-rad,center[0]+rad,center[1]+rad, fill=color, width = w, outline = out)
+    #wait for a move 
+    def acceptMove(self):
+        pass
+        #self.clickable = true
 
-        
-    #set the current player to the player specified in gamestate
-    #SUPER UGLY CODE
-    def nextTurn(self):
-        if self.gamestate.p1Turn:
-            if self.player1_method == "human":
-                self.clickable = True
-                return
-            else:
-                #nextMove = self.player1.getAIMove()
-                nextMove = self.player1_method(self.gamestate)
-                self.gamestate.makeMove(nextMove)
-                self.player1.makeMove(nextMove)
-    
-                self.last = nextMove #added
-                
-                self.updateStones()
-               # if(self.player2 != "human"):
-#                    self.player2.makeMove(nextMove)
-                self.nextTurn() #this isn't a great idea                
-        else:
-            if self.player2_method == "human":
-                self.clickable = True
-                return
-            else:
-                nextMove = self.player2_method(self.gamestate)
-                if(nextMove == None): return #the AI won
-                
-                self.gamestate.makeMove(nextMove)
-                #self.player2.makeMove(nextMove)
-                
-                self.last = nextMove
-                
-                self.updateStones()
-                #if(self.player1_method != "human"):
-                    #self.player1.makeMove(nextMove)
-                self.nextTurn() #this isn't a great idea        
+    def onMove(self, event):
+        pass
 
-    def __init__(self, parent, gamestate, player1_method, player2_method):
+
+
+    def __init__(self, parent, gamestate):
         
         tk.Frame.__init__(self,parent)
         self.gamestate = gamestate
@@ -151,17 +111,16 @@ class Board(tk.Frame):
         self.vborder = 50 #top-bottom border
         self.squaresize = 40
         self.stonerad = 0.3*self.squaresize
-        self.stoneIDs = {} #keep track of stone id's        
         w = (self.cols-1)*self.squaresize + 2*self.hborder
         h = (self.rows-1)*self.squaresize + 2*self.vborder
-        self.board = tk.Canvas(parent, width=w, height=h) #why does this need to be parent rather than self?
-        self.board.pack() #necessary?
 
-        ##### AI #####
-        self.player1_method = player1_method
-        self.player2_method = player2_method
-        ##############
-        self.clickable = False #can the player click on the screen?
+        self.stoneIDs = {} #keep track of stone id's 
+
+
+        self.board = tk.Canvas(parent, width=w, height=h)
+        self.board.pack()
+
+        #self.clickable = False #can the player click on the screen?
 
         for i in range(0,self.cols):
             x = self.hborder+i*self.squaresize
@@ -171,19 +130,14 @@ class Board(tk.Frame):
             y = self.vborder+i*self.squaresize
             self.board.create_line(self.hborder,y,self.hborder+self.squaresize*(self.cols-1),y)
 
-        if(self.player1_method == None and self.player2_method == None):
-            self.updateStones()
-            return
         
         self.board.bind("<Button-1>", self.onClick)
         self.board.bind("<Motion>", self.onMove)
 
-        def undoLast():
-            self.gamestate.undoLast()
-            self.gamestate.undoLast()
-            self.updateStones()
-            print("Undo")
-        b = tk.Button(parent, text="Undo", command=undoLast)
-        b.pack()
+        self.updateStones()
+        #self.nextTurn() #start the game
 
-        self.nextTurn() #start the game
+top = tk.Tk()
+state = gamestate.GameState()
+board = Board(top, state)
+top.mainloop()

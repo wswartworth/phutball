@@ -1,10 +1,10 @@
 
+EMPTY = 0
+STONE = 1
+BALL = 2
+
 #empty should really be a set
 class GameState():
-    
-    EMPTY = 0
-    STONE = 1
-    BALL = 2
   
     def __init__(self, rows=19, cols=15):
 
@@ -18,11 +18,11 @@ class GameState():
         #initalize the board to be empty with a ball in the middle
         for i in range(0,rows):
             for j in range(0,cols):
-                boardState[(i,j)] = EMPTY
-        boardState[ball] = BALL
+                self.boardState[(i,j)] = EMPTY
+        self.boardState[self.ball] = BALL
     
     def setStone(self, coords):
-        assert (boardState[coords] == EMPTY):
+        assert (self.boardState[coords] == EMPTY)
         self.boardState[coords] = STONE
 
     def inBounds(self,coords):
