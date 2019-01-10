@@ -1,97 +1,118 @@
+
+# In charge of GUI
+
+from Action import Action
+from ActionTypes import ActionTypes
+from BoardStates import BoardStates
 import tkinter as tk
-import gamestate
+import GameState
+
 
 class Board(tk.Frame):
 
-    cursorRow=-1
-    cursorCol=-1
+    cursorRow = -1
+    cursorCol = -1
     cursorStoneId = -1
-    last = None #the last stone to be placed
 
-    #get nearest grid point (in L_1 norm) to given coordinates
-    def row_col(self,x,y):
-        r = (y-self.vborder + 0.5*self.squaresize)//self.squaresize
-        c = (x-self.hborder+ 0.5*self.squaresize)//self.squaresize
-        return (r,c)
+    # the last stone to be placed
+    last = None
 
-    #use the game state to update the baord GUI
-    def updateStones(self):
-        for point in self.gamestate.boardState:
-            
-            r,c = point[0],point[1]
+    def __init__(self, parent, gameState):
 
-            #last = (point == self.last)
-            
-            if((r,c) in self.stoneIDs):
-                self.board.delete(self.stoneIDs[(r,c)])
+        tk.Frame.__init__(self, parent)
+        self.gameState = gameState
+        self.rows = self.gameState.rows  # number of horizontal lines
+        self.cols = self.gameState.cols  # number of vertical lines
+        self.hborder = 50  # left-right border
+        self.vborder = 50  # top-bottom border
+        self.squareSize = 40
+        self.stonerad = 0.3 * self.squareSize
+        w = (self.cols - 1) * self.squareSize + 2 * self.hborder
+        h = (self.rows - 1) * self.squareSize + 2 * self.vborder
 
-            if (self.gamestate.boardState[point] == gamestate.STONE):
-                self.stoneIDs[(r,c)] = self.drawStone( (r,c) , False)
-            elif (self.gamestate.boardState[point] == gamestate.BALL):
-                self.stoneIDs[(r,c)] = self.drawStone( (r,c), True)
+        # Maintain references to pieces on the board to remove as necessary
+        self.boardObjects = list()
 
+        self.board = tk.Canvas(parent, width=w, height=h)
+        self.board.pack()
 
+        # self.clickable = False #can the player click on the screen?
+
+        for i in range(0, self.cols):
+            x = self.hborder + i * self.squareSize
+            self.board.create_line(x, self.vborder, x, self.vborder + self.squareSize * (self.rows - 1))
+
+        for i in range(0, self.rows):
+            y = self.vborder + i * self.squareSize
+            self.board.create_line(self.hborder, y, self.hborder + self.squareSize * (self.cols - 1), y)
+
+        self.board.bind("<Button-1>", self.onClick)
+        self.board.bind("<Motion>", self.onMove)
+
+        # self.nextTurn() #start the game
+
+    def clearBoard(self):
+        for obj in self.boardObjects():
+            self.board.delete(obj)
+
+    def clearPosition(self, position):
+        self.board.delete(self.boardObjects[position])
+        self.boardObjects.remove(position)
+
+    # get nearest grid point (in L_1 norm) to given coordinates
+    def row_col(self, x, y):
+
+        r = (y - self.vborder + 0.5 * self.squareSize) // self.squareSize
+        c = (x - self.hborder + 0.5 * self.squareSize) // self.squareSize
+        return (r, c)
+
+    # use the game state to update the board GUI
+    def updateBoard(self):
+
+        boardDelta: dict() = self.gameState.getBoardDelta()
+        for position in boardDelta.keys():
+            if (boardDelta[position] == BoardStates.Empty):
+                self.clearPosition(position)
+            elif (boardDelta[position] == BoardStates.Stone):
+                self.drawStone(position)
+            elif (boardDelta[position] == BoardStates.Ball):
+                self.drawStone(position, True)
+            else:
+                assert False, "Found invalid BoardState when updating board"
 
     #called on a click
     def onClick(self,event):
 
-       # if not self.clickable: return
-        
-        r,c = self.row_col(event.x,event.y)
-        success = self.tryPlace(r,c)
-        if(success):
-            #self.nextTurn()
-            pass
+        # if not self.clickable: return
+        while (True):
+            r, c = self.row_col(event.x, event.y)
+            if (self.gameState.getStateAtPosition((r, c)) != BoardStates.Stone):
+                break
 
+        action = None
+        if (self.gameState.getStateAtPosition((r, c)) == BoardStates.Empty):
+            action = Action(ActionTypes.SetStone, [(r, c)])
+        else:
+            # The Ball was clicked. Now we need to select a sequence of stones until we hit an empty position
+            action = Action(ActionTypes.MoveBall, [(r, c)])
+            while (self.gameState.getStateAtPosition((r, c)) != BoardStates.Empty):
+                r, c = self.row_col(event.x, event.y)
 
+                if (self.gameState.getStateAtPosition((r, c)) == BoardStates.Stone):
+                    action.appendCoordinate((r, c))
 
-    #try to place a stone
-    #fails if spot is taken or if it's out of bounds
-    def tryPlace(self,r,c):
-        if r<0 or r>self.rows-1 or c<0 or c>self.cols-1:
-            return False
-        if self.gamestate.boardState[(r,c)] != gamestate.EMPTY:
-            return False
-        self.gamestate.setStone((r,c))
-
-        #self.last = (r,c) #new
-                   
-        self.updateStones()
-        return True
-        
-    #called when the cursor moves
-    # def onMove(self,event):
-
-    #     if not self.clickable: return
-        
-    #     r,c = self.row_col(event.x,event.y)
-    #     if r<0 or r>self.rows-1 or c<0 or c>self.cols-1:
-    #         if(self.cursorStoneId != -1): #copy pasta
-    #             self.board.delete(self.cursorStoneId)
-    #             self.cursorStoneId = -1
-    #         return
-    #     if(r != self.cursorRow or c != self.cursorCol):
-    #         if(self.cursorStoneId != -1):
-    #             self.board.delete(self.cursorStoneId)
-    #         if(self.gamestate.stones[(r,c)] == 0): #empty square
-    #             if(self.gamestate.p1Turn):
-    #                 color = "#FFCCCC"
-    #             else:
-    #                 color = "#CCFFFF"
-    #             self.cursorStoneId = self.drawStone(r,c,color,False)
-    #             self.cursorRow, self.cursorCol = r,c
-    #         else:
-    #             self.cursorRow, self.cursorCol = -1,-1
+        self.gameState.applyAction(action)
+        self.updateBoard()
         
     #create stone, return ID
     def drawStone(self, coords, football=False):
         r,c = coords
-        center = (self.hborder + c*self.squaresize, self.vborder + r*self.squaresize)
-        color = "black" if football else "white"
+        center = (self.hborder + c * self.squareSize, self.vborder + r * self.squareSize)
+        color = "black" if not football else "white"
         rad = self.stonerad
         return self.board.create_oval(center[0]-rad, center[1]-rad,center[0]+rad,center[1]+rad, fill=color, width = 1, outline = "black")
 
-    #wait for a move 
+    #wait for a move
     def acceptMove(self):
         pass
         #self.clickable = true
@@ -100,44 +121,7 @@ class Board(tk.Frame):
         pass
 
 
-
-    def __init__(self, parent, gamestate):
-        
-        tk.Frame.__init__(self,parent)
-        self.gamestate = gamestate
-        self.rows = self.gamestate.rows #number of horizontal lines
-        self.cols = self.gamestate.cols #number of vertical lines
-        self.hborder = 50 #left-right border
-        self.vborder = 50 #top-bottom border
-        self.squaresize = 40
-        self.stonerad = 0.3*self.squaresize
-        w = (self.cols-1)*self.squaresize + 2*self.hborder
-        h = (self.rows-1)*self.squaresize + 2*self.vborder
-
-        self.stoneIDs = {} #keep track of stone id's 
-
-
-        self.board = tk.Canvas(parent, width=w, height=h)
-        self.board.pack()
-
-        #self.clickable = False #can the player click on the screen?
-
-        for i in range(0,self.cols):
-            x = self.hborder+i*self.squaresize
-            self.board.create_line(x,self.vborder,x,self.vborder+self.squaresize*(self.rows-1))
-    
-        for i in range(0,self.rows):
-            y = self.vborder+i*self.squaresize
-            self.board.create_line(self.hborder,y,self.hborder+self.squaresize*(self.cols-1),y)
-
-        
-        self.board.bind("<Button-1>", self.onClick)
-        self.board.bind("<Motion>", self.onMove)
-
-        self.updateStones()
-        #self.nextTurn() #start the game
-
 top = tk.Tk()
-state = gamestate.GameState()
+state = GameState.GameState()
 board = Board(top, state)
 top.mainloop()
