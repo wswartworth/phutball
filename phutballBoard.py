@@ -18,9 +18,6 @@ class Board(tk.Frame):
     #use the game state to update the baord GUI
     def updateStones(self):
 
-        print("updating...")
-        print(self.gamestate.boardState)
-
         for point in self.gamestate.boardState:
             
             r,c = point[0],point[1]
@@ -45,7 +42,6 @@ class Board(tk.Frame):
             self.initJumpingObjects()
 
         self.jumping = not self.jumping
-        print(self.jumping)
 
     #initialize the extra stuff to handle jump moves
     def initJumpingObjects(self):
@@ -63,11 +59,7 @@ class Board(tk.Frame):
             self.toggleJumping()
         elif self.jumping:
             if self.jumpingState.boardState[(r,c)] == gamestate.EMPTY:
-                print("here")
-                print("(r,c)=", r, " ", c)
-                print("Legal jumps: ", self.jumpingState.legalJumpSquares())
                 if (r,c) in self.jumpingState.legalJumpSquares():
-                    print("yo")
                     self.jumpingState.jumpTo((r,c))
                     self.toggleJumping()
                     self.updateStones()

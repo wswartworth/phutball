@@ -73,7 +73,6 @@ class GameState():
             if n > 0: return 1
         bearing = (sgn(coords[0] - self.ball[0]), sgn(coords[1] - self.ball[1]))
         self.jumpInDir(bearing)
-        print(self.boardState)
 
 
 
