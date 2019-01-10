@@ -1,5 +1,6 @@
 import tkinter as tk
 import gamestate
+import copy
 
 class Board(tk.Frame):
 
@@ -16,6 +17,10 @@ class Board(tk.Frame):
 
     #use the game state to update the baord GUI
     def updateStones(self):
+
+        print("updating...")
+        print(self.gamestate.boardState)
+
         for point in self.gamestate.boardState:
             
             r,c = point[0],point[1]
@@ -31,17 +36,47 @@ class Board(tk.Frame):
                 self.stoneIDs[(r,c)] = self.drawStone( (r,c), True)
 
 
+    def toggleJumping(self):
+
+        if(self.jumping):
+            self.gamestate = self.jumpingState
+            self.jumpingState = None
+        else:
+            self.initJumpingObjects()
+
+        self.jumping = not self.jumping
+        print(self.jumping)
+
+    #initialize the extra stuff to handle jump moves
+    def initJumpingObjects(self):
+        self.jumpingState = self.gamestate.copy()
+
 
     #called on a click
     def onClick(self,event):
 
-       # if not self.clickable: return
-        
+        if not self.clickable: return
+
         r,c = self.row_col(event.x,event.y)
-        success = self.tryPlace(r,c)
-        if(success):
-            #self.nextTurn()
-            pass
+
+        if (r,c) == self.gamestate.ball:
+            self.toggleJumping()
+        elif self.jumping:
+            if self.jumpingState.boardState[(r,c)] == gamestate.EMPTY:
+                print("here")
+                print("(r,c)=", r, " ", c)
+                print("Legal jumps: ", self.jumpingState.legalJumpSquares())
+                if (r,c) in self.jumpingState.legalJumpSquares():
+                    print("yo")
+                    self.jumpingState.jumpTo((r,c))
+                    self.toggleJumping()
+                    self.updateStones()
+
+        else:
+            success = self.tryPlace(r,c)
+            if(success):
+                #self.nextTurn()
+                pass
 
 
 
@@ -93,11 +128,10 @@ class Board(tk.Frame):
 
     #wait for a move 
     def acceptMove(self):
-        pass
-        #self.clickable = true
+        self.clickable = True
 
-    def onMove(self, event):
-        pass
+    #def onMove(self, event):
+    #    pass
 
 
 
@@ -108,8 +142,8 @@ class Board(tk.Frame):
         self.rows = self.gamestate.rows #number of horizontal lines
         self.cols = self.gamestate.cols #number of vertical lines
         self.hborder = 50 #left-right border
-        self.vborder = 50 #top-bottom border
-        self.squaresize = 40
+        self.vborder = 20 #top-bottom border
+        self.squaresize = 35
         self.stonerad = 0.3*self.squaresize
         w = (self.cols-1)*self.squaresize + 2*self.hborder
         h = (self.rows-1)*self.squaresize + 2*self.vborder
@@ -120,7 +154,11 @@ class Board(tk.Frame):
         self.board = tk.Canvas(parent, width=w, height=h)
         self.board.pack()
 
-        #self.clickable = False #can the player click on the screen?
+        self.jumping = False
+
+
+
+        self.clickable = True #can the player click on the screen?
 
         for i in range(0,self.cols):
             x = self.hborder+i*self.squaresize
@@ -132,7 +170,7 @@ class Board(tk.Frame):
 
         
         self.board.bind("<Button-1>", self.onClick)
-        self.board.bind("<Motion>", self.onMove)
+        #self.board.bind("<Motion>", self.onMove)
 
         self.updateStones()
         #self.nextTurn() #start the game
