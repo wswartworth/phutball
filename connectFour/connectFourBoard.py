@@ -1,6 +1,4 @@
 
-# In charge of GUI
-
 from Action import Action
 from ActionTypes import ActionTypes
 from BoardStates import BoardStates
