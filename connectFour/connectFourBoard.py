@@ -1,6 +1,4 @@
 
-# In charge of GUI
-
 from Action import Action
 from ActionTypes import ActionTypes
 from BoardStates import BoardStates
@@ -54,6 +52,7 @@ class Board(tk.Frame):
         # For gameplay
         self.playerOneTurn = True
         self.executingBallMoveAction = False
+        self.ballMovePositions = list()
 
     def clearBoard(self):
 
@@ -88,22 +87,18 @@ class Board(tk.Frame):
 
     def executingBallMove(self, position, positionState):
 
-        if (positionState is BoardStates.Stone):
+        if (positionState is BoardStates.Ball):
             return
 
-        if (positionState is BoardStates.Ball):
-            self.executingBallMoveAction = False
-            # change turns here
-            return
+        assert self.distance(self.ballMovePositions[-1], position) <= 2, "Stones must be adjacent during ball move."
+        self.ballMovePositions.append(position)
 
         if (positionState is BoardStates.Empty):
-            action = Action(ActionTypes.MoveBall, [position])
+            action = Action(ActionTypes.MoveBall, self.ballMovePositions)
             self.gameState.applyAction(action)
             self.updateBoard()
-
-        if (not self.gameState.canMoveBall()):
+            self.ballMovePositions = list()
             self.executingBallMoveAction = False
-            # change turns here
 
     def onClick(self, event):
 
@@ -122,10 +117,8 @@ class Board(tk.Frame):
 
         if (positionState is BoardStates.Ball):
             # Initiate MoveBall action
+            self.ballMovePositions.append((r, c))
             self.executingBallMoveAction = True
-            return
-
-        # change turns here
 
     def onMove(self, event):
         pass
