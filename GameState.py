@@ -7,6 +7,8 @@ from BoardStates import BoardStates
 # empty should really be a set
 class GameState():
 
+    neighborDelta = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
     def __init__(self, rows=19, cols=15):
 
         self.rows = rows
@@ -34,6 +36,20 @@ class GameState():
         else:
             assert False, "Invalid action type"
 
+    def canMoveBall(self):
+
+        ballPosition = self.getBallPosition()
+
+        for dr, dc in GameState.neighborDelta:
+            neighbor = (ballPosition[0] + dr, ballPosition[1] + dc)
+            if (not self.inBounds(neighbor)):
+                continue
+
+            if (self.getStateAtPosition(neighbor) is BoardStates.Stone):
+                return True
+
+        return False
+
     def getAllPositions(self):
 
         return self.boardState.keys()
@@ -45,6 +61,22 @@ class GameState():
     def getBallPosition(self):
 
         return self.ball
+
+    def getInBetweenPositions(self, start, end):
+
+        changeR = end[0] - start[0]
+        changeC = end[1] - start[1]
+
+        normChangeR = changeR if changeR == 0 else changeR/abs(changeR)
+        normChangeC = changeC if changeC == 0 else changeC/abs(changeC)
+
+        maxDifference = max(abs(changeR),  abs(changeC))
+
+        positions = list()
+        for i in range(1, int(maxDifference)):
+            positions.append((start[0] + normChangeR * i, start[1] + normChangeC * i))
+
+        return positions
 
     def getStateAtPosition(self, position):
 
@@ -61,19 +93,26 @@ class GameState():
 
     def moveBall(self, coordinates):
 
-        self.validateMoveBall(coordinates)
+        # self.validateMoveBall(coordinates)
         self.boardDelta = dict()
 
         currentBallPosition = self.getBallPosition()
+        newBallPosition = coordinates[0]
+
+        # Get positions in between the two ball positions
+        inbetween = self.getInBetweenPositions(currentBallPosition, newBallPosition)
+
+        for position in inbetween:
+            self.boardState[position] = BoardStates.Empty
+            self.boardDelta[position] = BoardStates.Empty
+
         self.boardState[currentBallPosition] = BoardStates.Empty
         self.boardDelta[currentBallPosition] = BoardStates.Empty
 
-        for coordinate in coordinates[:-1]:
-            self.boardState[coordinate] = BoardStates.Empty
-            self.boardDelta[coordinate] = BoardStates.Empty
+        self.boardState[newBallPosition] = BoardStates.Ball
+        self.boardDelta[newBallPosition] = BoardStates.Ball
 
-        self.boardState[coordinates[-1]] = BoardStates.Ball
-        self.boardDelta[coordinates[-1]] = BoardStates.Ball
+        self.ball = newBallPosition
 
     def setStone(self, coordinates):
 
@@ -85,7 +124,7 @@ class GameState():
 
     def validateMoveBall(self, coordinates: list):
 
-        assert len(coordinates) > 1, "MoveBall action requires at least 2 coordinate pairs"
+        assert len(coordinates) > 2, "MoveBall action requires at least 2 coordinate pairs"
         assert self.boardState[coordinates[0]] == BoardStates.Ball, "MoveBall action must start with ball"
 
         for point in coordinates[1:-1]:
